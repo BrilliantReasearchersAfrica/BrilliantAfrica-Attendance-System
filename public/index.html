@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>BrilliantAfrica Attendance System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- Bootstrap & Font Awesome -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f5f7fa;
+    margin: 0;
+  }
+  .sidebar {
+    background-color: #fff;
+    width: 250px;
+    min-height: 100vh;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    padding-top: 20px;
+    position: fixed;
+    z-index: 1000;
+  }
+  .sidebar a {
+    display: block;
+    padding: 14px 25px;
+    color: #333;
+    font-weight: 500;
+    text-decoration: none;
+    transition: 0.3s;
+    cursor: pointer;
+  }
+  .sidebar a:hover,
+  .sidebar .active {
+    background-color: #e2e6ea;
+    border-left: 5px solid #007bff;
+    color: #007bff;
+  }
+  .content {
+    margin-left: 250px;
+    padding: 30px 20px;
+  }
+  .table thead th {
+    background-color: #e9ecef;
+  }
+  .table td,
+  .table th {
+    text-align: center;
+    vertical-align: middle;
+  }
+  .table td i {
+    margin-right: 8px;
+    color: #007bff;
+  }
+  .status {
+    font-size: 14px;
+  }
+  .loading {
+    text-align: center;
+    padding: 20px;
+  }
+  .stats-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+  }
+  .stats-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #007bff;
+  }
+  .content-section {
+    display: none;
+  }
+  .content-section.active {
+    display: block;
+  }
+  .badge {
+    font-size: 0.8em;
+  }
+  .error-message {
+    color: #dc3545;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+  }
+  @media (max-width: 768px) {
+    .sidebar {
+      width: 100%;
+      position: relative;
+      min-height: auto;
+    }
+    .content {
+      margin-left: 0;
+      padding: 20px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="text-center mb-4">
+    <h5 class="text-primary">BrilliantAfrica</h5>
+    <small class="text-muted">Attendance System</small>
+  </div>
+  <a href="#" onclick="showSection('daily')" id="nav-daily">
+    <i class="fas fa-calendar-day"></i> Daily Attendance
+  </a>
+  <a href="#" onclick="showSection('monthly')" id="nav-monthly" class="active">
+    <i class="fas fa-calendar-alt"></i> Monthly Attendance
+  </a>
+  <a href="#" onclick="showSection('monthly-inout')" id="nav-monthly-inout">
+    <i class="fas fa-sign-in-alt"></i> Monthly In Out
+  </a>
+  <a href="#" onclick="showSection('late-clockin')" id="nav-late-clockin">
+    <i class="fas fa-clock"></i> Late Clock-In
+  </a>
+  <a href="#" onclick="showSection('overtime')" id="nav-overtime">
+    <i class="fas fa-hourglass-half"></i> Over Time Report
+  </a>
+  <a href="#" onclick="showSection('leaves')" id="nav-leaves">
+    <i class="fas fa-file-alt"></i> Leave Report
+  </a>
+  <a href="#" onclick="showSection('summary')" id="nav-summary">
+    <i class="fas fa-chart-bar"></i> Summary Report
+  </a>
+  <a href="#" onclick="showSection('employees')" id="nav-employees">
+    <i class="fas fa-users"></i> Employees
+  </a>
+</div>
+
+<div class="content">
+  <!-- Monthly Attendance Section -->
+  <div id="monthly-section" class="content-section active">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+      <h4 class="mb-3 mb-md-0">
+        <i class="fas fa-calendar-alt text-primary"></i> Monthly Attendance
+      </h4>
+      <button class="btn btn-primary" onclick="exportData('monthly')">
+        <i class="fas fa-download"></i> Export
+      </button>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-4 mb-2">
+        <select class="form-select" id="monthlyDepartmentFilter">
+          <option value="">All Departments</option>
+        </select>
+      </div>
+      <div class="col-md-4 mb-2">
+        <input type="month" class="form-control" id="monthlyMonthFilter" value="2025-01" />
+      </div>
+      <div class="col-md-4 mb-2">
+        <button class="btn btn-success" onclick="loadMonthlyAttendance()">
+          <i class="fas fa-search"></i> Load Data
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered shadow-sm">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Department</th>
+            <th>Present Days</th>
+            <th>Absent Days</th>
+            <th>Half Days</th>
+            <th>Weekend Work</th>
+            <th>Avg Hours</th>
+            <th>Total Overtime</th>
+            <th>Attendance %</th>
+          </tr>
+        </thead>
+        <tbody id="monthlyAttendanceTableBody">
+          <tr>
+            <td colspan="9" class="text-center">
+              <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Daily Attendance Section -->
+  <div id="daily-section" class="content-section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+      <h4 class="mb-3 mb-md-0">
+        <i class="fas fa-calendar-day text-primary"></i> Daily Attendance
+      </h4>
+      <button class="btn btn-primary" onclick="exportData('daily')">
+        <i class="fas fa-download"></i> Export
+      </button>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-4 mb-2">
+        <select class="form-select" id="dailyDepartmentFilter">
+          <option value="">All Departments</option>
+        </select>
+      </div>
+      <div class="col-md-4 mb-2">
+        <input type="date" class="form-control" id="dailyDateFilter" />
+      </div>
+      <div class="col-md-4 mb-2">
+        <button class="btn btn-success" onclick="loadDailyAttendance()">
+          <i class="fas fa-search"></i> Load Data
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered shadow-sm">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Department</th>
+            <th>Clock In</th>
+            <th>Clock Out</th>
+            <th>Hours Worked</th>
+            <th>Status</th>
+            <th>Punctuality</th>
+          </tr>
+        </thead>
+        <tbody id="dailyAttendanceTableBody">
+          <tr>
+            <td colspan="7" class="text-center">Select a date to view attendance</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Monthly In Out Section -->
+  <div id="monthly-inout-section" class="content-section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+      <h4 class="mb-3 mb-md-0">
+        <i class="fas fa-sign-in-alt text-primary"></i> Monthly In Out Report
+      </h4>
+      <button class="btn btn-primary" onclick="exportData('monthly-inout')">
+        <i class="fas fa-download"></i> Export
+      </button>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-4 mb-2">
+        <select class="form-select" id="monthlyInOutDepartmentFilter">
+          <option value="">All Departments</option>
+        </select>
+      </div>
+      <div class="col-md-4 mb-2">
+        <input type="month" class="form-control" id="monthlyInOutMonthFilter" value="2025-01" />
+      </div>
+      <div class="col-md-4 mb-2">
+        <button class="btn btn-success" onclick="loadMonthlyInOut()">
+          <i class="fas fa-search"></i> Load Data
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered shadow-sm">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Employee</th>
+            <th>Department</th>
+            <th>Check In</th>
+            <th>Check Out</th>
+            <th>Hours Worked</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="monthlyInOutTableBody">
+          <tr>
+            <td colspan="7" class="text-center">
+              <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Late Clock-In Section -->
+  <div id="late-clockin-section" class="content-section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+      <h4 class="mb-3 mb-md-0">
+        <i class="fas fa-clock text-primary"></i> Late Clock-In Report
+      </h4>
+      <button class="btn btn-primary" onclick="exportData('late-clockin')">
+        <i class="fas fa-download"></i> Export
+      </button>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-3 mb-2">
+        <select class="form-select" id="lateClockInDepartmentFilter">
+          <option value="">All Departments</option>
+        </select>
+      </div>
+      <div class="col-md-3 mb-2">
+        <input type="month" class="form-control" id="lateClockInMonthFilter" value="2025-01" />
+      </div>
+      <div class="col-md-3 mb-2">
+        <input type="date" class="form-control" id="lateClockInDateFilter" />
+      </div>
+      <div class="col-md-3 mb-2">
+        <button class="btn btn-success" onclick="loadLateClockIn()">
+          <i class="fas fa-search"></i> Load Data
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered shadow-sm">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Employee</th>
+            <th>Department</th>
+            <th>Clock In Time</th>
+            <th>Late By</th>
+            <th>Hours Worked</th>
+          </tr>
+        </thead>
+        <tbody id="lateClockInTableBody">
+          <tr>
+            <td colspan="6" class="text-center">
+              <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Overtime Section -->
+  <div id="overtime-section" class="content-section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+      <h4 class="mb-3 mb-md-0">
+        <i class="fas fa-hourglass-half text-primary"></i> Overtime Report
+      </h4>
+      <button class="btn btn-primary" onclick="exportData('overtime')">
+        <i class="fas fa-download"></i> Export
+      </button>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-4 mb-2">
+        <select class="form-select" id="overtimeDepartmentFilter">
+          <option value="">All Departments</option>
+        </select>
+      </div>
+      <div class="col-md-4 mb-2">
+        <input type="month" class="form-control" id="overtimeMonthFilter" value="2025-01" />
+      </div>
+      <div class="col-md-4 mb-2">
+        <button class="btn btn-success" onclick="loadOvertime()">
+          <i class="fas fa-search"></i> Load Data
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered shadow-sm">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Employee</th>
+            <th>Department</th>
+            <th>Regular Hours</th>
+            <th>Overtime Hours</th>
+            <th>Total Hours</th>
+          </tr>
+        </thead>
+        <tbody id="overtimeTableBody">
+          <tr>
+            <td colspan="6" class="text-center">
+              <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Employees Section -->
+  <div id="employees-section" class="content-section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+      <h4 class="mb-3 mb-md-0">
+        <i class="fas fa-users text-primary"></i> Employees
+      </h4>
+      <button class="btn btn-primary" onclick="showAddEmployeeModal()">
+        <i class="fas fa-plus"></i> Add Employee
+      </button>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-4 mb-2">
+        <select class="form-select" id="employeeDepartmentFilter">
+          <option value="">All Departments</option>
+        </select>
+      </div>
+      <div class="col-md-4 mb-2">
+        <select class="form-select" id="employeeStatusFilter">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+      <div class="col-md-4 mb-2">
+        <input type="text" class="form-control" id="employeeSearchFilter" placeholder="Search employees..." />
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered shadow-sm">
+        <thead>
+          <tr>
+            <th>Employee Code</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Department</th>
+            <th>Position</th>
+            <th>Hire Date</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="employeesTableBody">
+          <tr>
+            <td colspan="8" class="text-center">
+              <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Summary Section -->
+  <div id="summary-section" class="content-section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+      <h4 class="mb-3 mb-md-0">
+        <i class="fas fa-chart-bar text-primary"></i> Summary Report
+      </h4>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-4 mb-2">
+        <select class="form-select" id="summaryDepartmentFilter">
+          <option value="">All Departments</option>
+        </select>
+      </div>
+      <div class="col-md-4 mb-2">
+        <input type="month" class="form-control" id="summaryMonthFilter" value="2025-01" />
+      </div>
+      <div class="col-md-4 mb-2">
+        <button class="btn btn-success" onclick="loadSummary()">
+          <i class="fas fa-search"></i> Load Summary
+        </button>
+      </div>
+    </div>
+
+    <div id="summaryContent">
+      <div class="row">
+        <div class="col-md-3">
+          <div class="stats-card">
+            <div class="stats-number" id="totalEmployees">-</div>
+            <div class="text-muted">Total Employees</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stats-card">
+            <div class="stats-number" id="presentToday">-</div>
+            <div class="text-muted">Present Today</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stats-card">
+            <div class="stats-number" id="absentToday">-</div>
+            <div class="text-muted">Absent Today</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stats-card">
+            <div class="stats-number" id="avgAttendance">-</div>
+            <div class="text-muted">Avg Attendance %</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Global variables
+  let currentSection = 'monthly';
+  const API_BASE_URL = '/api'; // Adjust this to your API base URL
+
+  // Utility function for API calls
+  async function apiCall(endpoint, options = {}) {
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers
+        },
+        ...options
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('API call failed:', error);
+      throw error;
+    }
+  }
+
+  // Show error message
+  function showError(message, containerId) {
+    const container = document.getElementById(containerId);
+    if (container) {
+      container.innerHTML = `
+        <tr>
+          <td colspan="10" class="text-center">
+            <div class="error-message">
+              <i class="fas fa-exclamation-triangle"></i> ${message}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+  }
+
+  // Load data when page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    loadDepartments();
+    loadMonthlyAttendance();
+    loadEmployees();
+
+    // Set today's date for daily filter
+    const today = new Date().toISOString().split('T')[0];
+    const dailyDateFilter = document.getElementById('dailyDateFilter');
+    if (dailyDateFilter) {
+      dailyDateFilter.value = today;
+    }
+  });
+
+  // Navigation function
+  function showSection(sectionName) {
+    // Hide all sections
+    document.querySelectorAll('.content-section').forEach(section => {
+      section.classList.remove('active');
+    });
+
+    // Remove active class from all nav items
+    document.querySelectorAll('.sidebar a').forEach(link => {
+      link.classList.remove('active');
+    });
+
+    // Show selected section
+    document.getElementById(sectionName + '-section').classList.add('active');
+    document.getElementById('nav-' + sectionName).classList.add('active');
+
+    currentSection = sectionName;
+  }
+
+  async function loadDepartments() {
+    try {
+      // Simulated fetch: replace with your actual API endpoint e.g. /api/attendance/departments
+      const response = await fetch('/api/attendance/departments');
+      const result = await response.json();
+
+      if (result.success) {
+        // Update all department filters
+        const filters = ['monthlyDepartmentFilter', 'dailyDepartmentFilter', 'summaryDepartmentFilter'];
+
+        filters.forEach(filterId => {
+          const select = document.getElementById(filterId);
+          if (select) {
+            select.innerHTML = '<option value="">All Departments</option>';
+
+            result.data.forEach(dept => {
+              if (dept.name !== 'All Departments') {
+                const option = document.createElement('option');
+                option.value = dept.id;
+                option.textContent = dept.name;
+                select.appendChild(option);
+              }
+            });
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Error loading departments, loading mock data:', error);
+      loadMockDepartments();
+    }
+  }
+
+  function loadMockDepartments() {
+    const mockDepartments = [
+      { id: 1, name: 'Engineering' },
+      { id: 2, name: 'Marketing' },
+      { id: 3, name: 'Sales' },
+      { id: 4, name: 'HR' }
+    ];
+
+    const filters = ['monthlyDepartmentFilter', 'dailyDepartmentFilter', 'summaryDepartmentFilter'];
+
+    filters.forEach(filterId => {
+      const select = document.getElementById(filterId);
+      if (select) {
+        select.innerHTML = '<option value="">All Departments</option>';
+
+        mockDepartments.forEach(dept => {
+          const option = document.createElement('option');
+          option.value = dept.id;
+          option.textContent = dept.name;
+          select.appendChild(option);
+        });
+      }
+    });
+  }
+
+  async function loadMonthlyAttendance() {
+    try {
+      const monthFilter = document.getElementById('monthlyMonthFilter');
+      const departmentFilter = document.getElementById('monthlyDepartmentFilter');
+
+      if (!monthFilter || !monthFilter.value) return;
+
+      const [year, month] = monthFilter.value.split('-');
+
+      let url = `/api/attendance/monthly?month=${month}&year=${year}`;
+      if (departmentFilter && departmentFilter.value) {
+        url += `&department=${departmentFilter.value}`;
+      }
+
+      const response = await fetch(url);
+      const result = await response.json();
+
+      if (result.success) {
+        populateMonthlyTable(result.data);
+      }
+    } catch (error) {
+      console.warn('Error loading monthly attendance, loading mock data:', error);
+      loadMockMonthlyData();
+    }
+  }
+
+  async function loadDailyAttendance() {
+    try {
+      const dateFilter = document.getElementById('dailyDateFilter');
+      const departmentFilter = document.getElementById('dailyDepartmentFilter');
+
+      if (!dateFilter || !dateFilter.value) return;
+
+      let url = `/api/attendance/daily?date=${dateFilter.value}`;
+      if (departmentFilter && departmentFilter.value) {
+        url += `&department=${departmentFilter.value}`;
+      }
+
+      const response = await fetch(url);
+      const result = await response.json();
+
+      if (result.success) {
+        populateDailyTable(result.data);
+      }
+    } catch (error) {
+      console.warn('Error loading daily attendance, loading mock data:', error);
+      loadMockDailyData();
+    }
+  }
+
+  function loadMockMonthlyData() {
+    const mockData = [
+      {
+        name: 'John Doe',
+        total_days_in_month: 31,
+        office_days: 22,
+        clock_in_days: 20,
+        worked_days: 20,
+        weekoff_holidays: 9,
+        worked_on_weekoffs: 2,
+        total_leave: 2,
+        paid_leave: 2
+      },
+      {
+        name: 'Jane Smith',
+        total_days_in_month: 31,
+        office_days: 22,
+        clock_in_days: 22,
+        worked_days: 22,
+        weekoff_holidays: 9,
+        worked_on_weekoffs: 0,
+        total_leave: 0,
+        paid_leave: 0
+      }
+    ];
+    populateMonthlyTable(mockData);
+  }
+
+  function loadMockDailyData() {
+    const mockData = [
+      {
+        name: 'John Doe',
+        department: 'Engineering',
+        clock_in: '09:00',
+        clock_out: '17:30',
+        hours_worked: '8.5',
+        status: 'Present',
+        punctuality: 'On Time'
+      },
+      {
+        name: 'Jane Smith',
+        department: 'Marketing',
+        clock_in: '09:15',
+        clock_out: '17:45',
+        hours_worked: '8.5',
+        status: 'Present',
+        punctuality: 'Late'
+      }
+    ];
+    populateDailyTable(mockData);
+  }
+
+  function populateMonthlyTable(data) {
+    const tbody = document.getElementById('monthlyAttendanceTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+      tbody.innerHTML = `
+          <tr>
+              <td colspan="9" class="text-center">No data available</td>
+          </tr>
+      `;
+      return;
+    }
+
+    data.forEach(employee => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+          <td><i class="fas fa-user-circle"></i> ${employee.name}</td>
+          <td>${employee.total_days_in_month}</td>
+          <td>${employee.office_days}</td>
+          <td>${employee.clock_in_days}</td>
+          <td>${employee.worked_days}</td>
+          <td>${employee.weekoff_holidays}</td>
+          <td>${employee.worked_on_weekoffs}</td>
+          <td>${employee.total_leave}</td>
+          <td>${employee.paid_leave}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  function populateDailyTable(data) {
+    const tbody = document.getElementById('dailyAttendanceTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+      tbody.innerHTML = `
+          <tr>
+              <td colspan="7" class="text-center">No data available</td>
+          </tr>
+      `;
+      return;
+    }
+
+    data.forEach(employee => {
+      const row = document.createElement('tr');
+      const statusBadge = employee.status === 'Present' ? 'badge bg-success' : 'badge bg-danger';
+      const punctualityBadge = employee.punctuality === 'On Time' ? 'badge bg-success' : 'badge bg-warning';
+
+      row.innerHTML = `
+          <td><i class="fas fa-user-circle"></i> ${employee.name}</td>
+          <td>${employee.department}</td>
+          <td>${employee.clock_in || '-'}</td>
+          <td>${employee.clock_out || '-'}</td>
+          <td>${employee.hours_worked || '-'}</td>
+          <td><span class="${statusBadge}">${employee.status}</span></td>
+          <td><span class="${punctualityBadge}">${employee.punctuality}</span></td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  function loadSummary() {
+    alert('Summary report feature coming soon!');
+  }
+
+  function exportData(type) {
+    alert(`Export ${type} data functionality will be implemented.`);
+  }
+</script>
+
+</body>
+</html>
