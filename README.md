@@ -25,9 +25,9 @@ Token expiration & session handling
 🖥️ Interface
 Responsive UI with Bootstrap 5
 
-Mobile-friendly layout
+Web-friendly layout
 
-Real-time updates & interactive charts
+Real-time updates 
 
 📦 Database
 SQLite3 with relational schema
