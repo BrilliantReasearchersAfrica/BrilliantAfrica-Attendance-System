@@ -119,7 +119,7 @@
 
       <div class="d-flex justify-content-between mb-2">
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="rememberMe">
+          <input class="form-check-input" type="checkbox" id="rememberMe" />
           <label class="form-check-label" for="rememberMe">Remember</label>
         </div>
         <a href="#" style="font-size: 0.8rem;">Forgot?</a>
@@ -137,7 +137,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Show/hide password
+    // Show/hide password toggle
     document.getElementById('togglePassword').addEventListener('click', function () {
       const passwordInput = document.getElementById('password');
       const icon = this.querySelector('i');
@@ -152,11 +152,13 @@
       }
     });
 
-    // Handle form submit
-    document.getElementById("loginForm").addEventListener("submit", function (e) {
+    // Handle form submit with real API call
+    document.getElementById("loginForm").addEventListener("submit", async function (e) {
       e.preventDefault();
-      const username = document.getElementById("username").value;
+
+      const email = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value;
+      const rememberMe = document.getElementById("rememberMe").checked;
       const messageContainer = document.getElementById("messageContainer");
       const loginBtn = document.querySelector(".btn-login");
 
@@ -164,26 +166,58 @@
       loginBtn.disabled = true;
       loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Authenticating...';
 
-      setTimeout(() => {
-        if (username === "demo@example.com" && password === "password") {
+      try {
+        const response = await fetch('http://localhost:3000/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        if (!response.ok) {
+          // Try to get error message from response body
+          let errorMsg = 'Login failed';
+          try {
+            const errorData = await response.json();
+            if (errorData.message) errorMsg = errorData.message;
+          } catch (_) {}
+          throw new Error(errorMsg);
+        }
+
+        const data = await response.json();
+
+        if (data.token) {
+          // Save token in localStorage or sessionStorage based on "Remember" checkbox
+          if (rememberMe) {
+            localStorage.setItem('authToken', data.token);
+          } else {
+            sessionStorage.setItem('authToken', data.token);
+          }
+
           messageContainer.innerHTML = `
             <div class="success-message">
               <i class="fas fa-check-circle"></i> Login successful! Redirecting...
             </div>
           `;
+
           setTimeout(() => {
             window.location.href = "/index.html";
           }, 1500);
         } else {
-          messageContainer.innerHTML = `
-            <div class="error-message">
-              <i class="fas fa-exclamation-circle"></i> Invalid credentials.
-            </div>
-          `;
+          throw new Error(data.message || 'Invalid credentials.');
         }
+      } catch (error) {
+        messageContainer.innerHTML = `
+          <div class="error-message">
+            <i class="fas fa-exclamation-circle"></i> ${error.message}
+          </div>
+        `;
+        console.error('Login error:', error);
+      } finally {
         loginBtn.disabled = false;
         loginBtn.innerHTML = '<i class="fas fa-sign-in-alt me-1"></i> Sign In';
-      }, 1500);
+      }
     });
   </script>
 </body>
