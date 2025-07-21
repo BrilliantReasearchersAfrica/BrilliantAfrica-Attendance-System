@@ -101,10 +101,10 @@
 
     <form id="loginForm">
       <div class="mb-2">
-        <label class="form-label">Email</label>
+        <label class="form-label">Username</label>
         <div class="input-group">
-          <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-          <input type="email" class="form-control" id="username" placeholder="email@example.com" required />
+          <span class="input-group-text"><i class="fas fa-user"></i></span>
+          <input type="text" class="form-control" id="username" placeholder="Enter your username" required />
         </div>
       </div>
 
@@ -156,7 +156,7 @@
     document.getElementById("loginForm").addEventListener("submit", async function (e) {
       e.preventDefault();
 
-      const email = document.getElementById("username").value.trim();
+      const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value;
       const rememberMe = document.getElementById("rememberMe").checked;
       const messageContainer = document.getElementById("messageContainer");
@@ -172,11 +172,10 @@
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({ username, password }) // ✅ matches backend
         });
 
         if (!response.ok) {
-          // Try to get error message from response body
           let errorMsg = 'Login failed';
           try {
             const errorData = await response.json();
@@ -188,7 +187,6 @@
         const data = await response.json();
 
         if (data.token) {
-          // Save token in localStorage or sessionStorage based on "Remember" checkbox
           if (rememberMe) {
             localStorage.setItem('authToken', data.token);
           } else {
@@ -202,7 +200,7 @@
           `;
 
           setTimeout(() => {
-            window.location.href = "/index.html";
+            window.location.href = "../public/index.html";
           }, 1500);
         } else {
           throw new Error(data.message || 'Invalid credentials.');
