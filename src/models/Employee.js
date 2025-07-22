@@ -1,3 +1,4 @@
+
 const database = require('../config/database');
 
 class Employee {
@@ -53,48 +54,36 @@ class Employee {
   static getMonthlyAttendance(month, year, departmentId = null) {
     return new Promise((resolve, reject) => {
       const db = database.getDatabase();
-      
-      // Calculate days in month
-      const daysInMonth = new Date(year, month, 0).getDate();
-      const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
-      const endDate = `${year}-${month.toString().padStart(2, '0')}-${daysInMonth.toString().padStart(2, '0')}`;
-      
+      const monthStr = month.toString().padStart(2, '0');
+      const yearStr = year.toString();
       let query = `
         SELECT 
           e.id,
           e.name,
-          e.employee_code,
-          d.name as department_name,
-          ${daysInMonth} as total_days_in_month,
-          
-          -- Calculate office days (weekdays - holidays)
-          (SELECT COUNT(*) 
-           FROM (
-             WITH RECURSIVE dates(date) AS (
-               SELECT '${startDate}'
-               UNION ALL
-               SELECT date(date, '+1 day')
-               FROM dates
-               WHERE date < '${endDate}'
-             )
-             SELECT date FROM dates 
-             WHERE CAST(strftime('%w', date) AS INTEGER) NOT IN (0, 6)
-             AND date NOT IN (SELECT date FROM holidays WHERE strftime('%Y', date) = '${year}'
+          d.name as department,
+          SUM(CASE WHEN a.status='present' THEN 1 ELSE 0 END) AS present_days,
+          SUM(CASE WHEN a.status='absent' THEN 1 ELSE 0 END) AS absent_days,
+          SUM(CASE WHEN a.status='half_day' THEN 1 ELSE 0 END) AS half_days,
+          SUM(CASE WHEN a.is_weekend=1 AND a.status='present' THEN 1 ELSE 0 END) AS weekend_work,
+          ROUND(AVG(a.hours_worked),2) AS avg_hours,
+          ROUND(SUM(a.overtime_hours),2) AS total_overtime,
+          ROUND(100.0 * SUM(CASE WHEN a.status='present' THEN 1 ELSE 0 END) / COUNT(a.id),2) AS attendance_percent
+        FROM employees e
+        LEFT JOIN departments d ON e.department_id = d.id
+        LEFT JOIN attendance a ON e.id = a.employee_id
+          AND strftime('%m', a.date) = ?
+          AND strftime('%Y', a.date) = ?
+        WHERE e.status = 'active'
       `;
-      
-      const params = [];
-      
-      if (departmentId && departmentId > 1) {
-        query += ` WHERE e.department_id = ?`;
+      const params = [monthStr, yearStr];
+      if (departmentId) {
+        query += ' AND e.department_id = ?';
         params.push(departmentId);
       }
-      
+      query += ' GROUP BY e.id, e.name, d.name ORDER BY e.name';
       db.all(query, params, (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows);
-        }
+        if (err) reject(err);
+        else resolve(rows);
       });
     });
   }

@@ -1,29 +1,28 @@
+// app.js
 const express = require('express');
 const cors = require('cors');
-const attendanceRoutes = require('./routes/attendanceRoutes');
-const authRoutes = require('./routes/authRoutes');
-const departmentRoutes = require('./routes/departmentRoutes');
-const employeeRoutes = require('./routes/employeeRoutes');
 
-const app = express();
+module.exports = (db) => {
+  if (!db) {
+    console.error('Database connection not provided to app.js!');
+  }
 
-app.use(cors()); // ✅ CORS enabled for frontend
-app.use(express.json()); // ✅ Parse JSON body
+  const app = express();  // Create the app inside this function
 
-// Routes
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/departments', departmentRoutes);
-app.use('/api/employees', employeeRoutes);
+  app.use(cors());
+  app.use(express.json());
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK' });
-});
+  // Import routes, passing the db instance
+  const attendanceRoutes = require('./routes/attendanceRoutes')(db);
+  const authRoutes = require('./routes/authRoutes')(db);
+  const departmentRoutes = require('./routes/departmentRoutes')(db);
+  const employeeRoutes = require('./routes/employeeRoutes')(db);
 
-// Catch all
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
+  // Mount routes
+  app.use('/api/attendance', attendanceRoutes);
+  app.use('/api/auth', authRoutes);
+  app.use('/api/departments', departmentRoutes);
+  app.use('/api/employees', employeeRoutes);
 
-module.exports = app;
+  return app; // Return the configured app
+};
